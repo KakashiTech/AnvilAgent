@@ -1,0 +1,78 @@
+profiles:
+  renoir:
+    name: AMD Renoir (4800U/5600G)
+    vram_gb: 2
+    shared_memory_gb: 16
+    vulkan_version: 1.3+
+    recommended_models:
+    - phi-4-mini-q4
+    - gemma-3-4b-q4
+    max_context: 16384
+    gpu_layers: 99
+    supports_wave32: true
+  cezanne:
+    name: AMD Cezanne (5625U/6600H)
+    vram_gb: 2
+    shared_memory_gb: 16
+    vulkan_version: 1.3+
+    recommended_models:
+    - phi-4-mini-q4
+    - gemma-3-4b-q4
+    max_context: 16384
+    gpu_layers: 99
+    supports_wave32: true
+  phoenix:
+    name: AMD Phoenix (7540U/7840U)
+    vram_gb: 4
+    shared_memory_gb: 32
+    vulkan_version: 1.3+
+    recommended_models:
+    - phi-4-14b-q4
+    - qwen-3-8b-q4
+    max_context: 32768
+    gpu_layers: 99
+    supports_wave32: true
+  strix_point:
+    name: AMD Strix Point (AI 9 HX 370/365)
+    vram_gb: 8
+    shared_memory_gb: 48
+    vulkan_version: 1.3+
+    recommended_models:
+    - phi-4-14b-q4
+    - qwen-3-8b-q4
+    - llama-3-8b-q4
+    max_context: 65536
+    gpu_layers: 99
+    supports_wave32: true
+  discrete_amd:
+    name: AMD Discrete Radeon (RX/Vega)
+    vram_gb: 8
+    shared_memory_gb: 0
+    vulkan_version: 1.3+
+    recommended_models:
+    - phi-4-14b-q4
+    - qwen-3-8b-q4
+    max_context: 65536
+    gpu_layers: 99
+    supports_wave32: true
+  nvidia:
+    name: NVIDIA GPU (GeForce/Quadro)
+    vram_gb: 8
+    shared_memory_gb: 0
+    vulkan_version: 1.3+
+    recommended_models:
+    - phi-4-14b-q4
+    - qwen-3-8b-q4
+    max_context: 65536
+    gpu_layers: 99
+    supports_wave32: false
+  default:
+    name: Unknown/Generic GPU
+    vram_gb: 1
+    shared_memory_gb: 8
+    vulkan_version: 1.2+
+    recommended_models:
+    - phi-4-mini-q4
+    max_context: 8192
+    gpu_layers: 50
+    supports_wave32: false

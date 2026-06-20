@@ -1,0 +1,32 @@
+hardware:
+  vulkan_device: auto
+  cpu_threads: 10
+  ram_limit_gb: 12
+inference:
+  model_path: ~/models/Llama-3.2-3B-Instruct-Q4_K_M.gguf
+  context_length: 16384
+  batch_size: 512
+  flash_attn: true
+  gpu_layers: 99
+  server_host: 127.0.0.1
+  server_port: 8081
+orchestrator:
+  max_concurrent_agents: 4
+  agent_timeout_s: 120
+  enable_kv_paging: true
+  enable_expert_pinning: false
+memory:
+  kv_cache_compression: asymmetric
+  key_precision: q8_0
+  value_precision: 3bit_mse
+  ssd_cache_dir: ~/.cache/anvil/kv_pages
+  max_disk_cache_gb: 22
+sandbox:
+  backend: wasmtime
+  memory_limit_mb: 256
+  enable_network: false
+  enable_filesystem: false
+api:
+  host: 127.0.0.1
+  port: 8080
+  enable_websocket: true

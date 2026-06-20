@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnvilAgent</title>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-yellow: #d29922;
+            --border: #30363d;
+            --font-mono: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            grid-template-rows: 60px 1fr;
+            min-height: 100vh;
+            gap: 0;
+        }
+        .header {
+            grid-column: 1 / -1;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            gap: 16px;
+        }
+        .header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .header h1 .logo {
+            width: 28px;
+            height: 28px;
+            background: var(--accent);
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 700;
+            color: #fff;
+        }
+        .header .status-badge {
+            font-size: 12px;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+        .status-badge.idle { background: var(--bg-tertiary); color: var(--text-secondary); }
+        .status-badge.running { background: #1f6feb33; color: var(--accent); }
+        .status-badge.completed { background: #3fb95033; color: var(--accent-green); }
+        .status-badge.failed { background: #f8514933; color: var(--accent-red); }
+        .status-badge.paused { background: #d2992233; color: var(--accent-yellow); }
+        .header .uptime-label { font-size: 12px; color: var(--text-secondary); margin-left: auto; }
+        .header .uptime-label span { font-family: var(--font-mono); color: var(--text-primary); }
+
+        .sidebar {
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            overflow-y: auto;
+        }
+        .sidebar-section h3 {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .metric-card {
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 12px;
+            border: 1px solid var(--border);
+        }
+        .metric-card .label { font-size: 11px; color: var(--text-secondary); margin-bottom: 4px; }
+        .metric-card .value { font-size: 20px; font-weight: 600; font-family: var(--font-mono); }
+        .metric-card .sub { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+        .progress-bar {
+            height: 6px;
+            background: var(--bg-primary);
+            border-radius: 3px;
+            margin-top: 6px;
+            overflow: hidden;
+        }
+        .progress-bar .fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+        .progress-bar .fill.ram { background: linear-gradient(90deg, var(--accent), #79c0ff); }
+        .progress-bar .fill.kv { background: linear-gradient(90deg, var(--accent-green), #56d364); }
+
+        .main {
+            padding: 24px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            align-content: start;
+            overflow-y: auto;
+        }
+        .panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+        }
+        .panel.full { grid-column: 1 / -1; }
+        .panel h2 { font-size: 14px; font-weight: 500; margin-bottom: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; }
+        .panel h2 .count { font-size: 12px; background: var(--bg-tertiary); padding: 1px 8px; border-radius: 8px; font-family: var(--font-mono); color: var(--text-primary); }
+
+        .agent-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .agent-item:last-child { border-bottom: none; }
+        .agent-name { font-family: var(--font-mono); font-size: 13px; }
+        .agent-name.active { color: var(--accent); }
+        .agent-status { font-size: 11px; padding: 2px 8px; border-radius: 8px; background: var(--bg-tertiary); color: var(--text-secondary); }
+
+        .console {
+            background: #000;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            line-height: 1.6;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        .console .line { color: var(--text-secondary); white-space: pre-wrap; word-break: break-all; }
+        .console .line.info { color: var(--accent); }
+        .console .line.error { color: var(--accent-red); }
+        .console .line.success { color: var(--accent-green); }
+        .console .line.warn { color: var(--accent-yellow); }
+
+        .control-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+        .control-group .field {
+            flex: 1;
+            min-width: 120px;
+        }
+        input, textarea {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: var(--text-primary);
+            font-size: 13px;
+            font-family: var(--font-mono);
+            width: 100%;
+        }
+        input:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px #1f6feb33; }
+        button {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+            white-space: nowrap;
+        }
+        button:hover { opacity: 0.85; }
+        button:active { transform: scale(0.97); }
+        button.secondary { background: var(--bg-tertiary); color: var(--text-primary); }
+        button.secondary:hover { background: var(--border); }
+        button.danger { background: var(--accent-red); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        table th {
+            text-align: left;
+            padding: 8px 12px;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border);
+            font-weight: 500;
+        }
+        table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+            font-family: var(--font-mono);
+            font-size: 12px;
+        }
+        table tr:last-child td { border-bottom: none; }
+
+        .ws-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+        }
+        .ws-indicator.connected { background: var(--accent-green); box-shadow: 0 0 6px var(--accent-green); }
+        .ws-indicator.disconnected { background: var(--accent-red); box-shadow: 0 0 6px var(--accent-red); }
+        .ws-indicator.connecting { background: var(--accent-yellow); animation: pulse 1.5s ease-in-out infinite; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .pulse { animation: pulse 2s ease-in-out infinite; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .panel { animation: fadeIn 0.3s ease; }
+
+        @keyframes countUp {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .count-anim { animation: countUp 0.2s ease; }
+
+        .empty-state {
+            text-align: center;
+            padding: 24px;
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        @media (max-width: 768px) {
+            body { grid-template-columns: 1fr; grid-template-rows: 60px auto 1fr; }
+            .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+            .main { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1><span class="logo">A</span> AnvilAgent</h1>
+    <span class="status-badge idle" id="statusBadge">IDLE</span>
+    <span class="ws-indicator disconnected" id="wsIndicator"></span>
+    <span class="uptime-label">Uptime: <span id="uptimeDisplay">0s</span></span>
+</div>
+
+<div class="sidebar">
+    <div class="sidebar-section">
+        <h3>System</h3>
+        <div class="metric-card">
+            <div class="label">RAM Used</div>
+            <div class="value" id="ramValue">0.0</div>
+            <div class="sub" id="ramDetail">0.0 GB / 0.0 GB</div>
+            <div class="progress-bar"><div class="fill ram" id="ramBar" style="width:0%"></div></div>
+        </div>
+        <div class="metric-card">
+            <div class="label">KV Cache</div>
+            <div class="value" id="kvValue">0.0</div>
+            <div class="sub">MB in RAM</div>
+            <div class="progress-bar"><div class="fill kv" id="kvBar" style="width:0%"></div></div>
+        </div>
+    </div>
+    <div class="sidebar-section">
+        <h3>Inference</h3>
+        <div class="metric-card">
+            <div class="label">Tokens Generated</div>
+            <div class="value" id="tokensValue">0</div>
+        </div>
+        <div class="metric-card">
+            <div class="label">Tokens / Second</div>
+            <div class="value" id="tpsValue">0.00</div>
+        </div>
+    </div>
+    <div class="sidebar-section">
+        <h3>Session</h3>
+        <div class="metric-card">
+            <div class="label">Active Agent</div>
+            <div class="value" id="activeAgentValue" style="font-size:15px">—</div>
+        </div>
+    </div>
+</div>
+
+<div class="main">
+    <div class="panel full">
+        <h2>Agent Queue</h2>
+        <div id="queueContainer">
+            <div class="empty-state">No agents in queue</div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2>Control Panel</h2>
+        <div style="margin-bottom:12px">
+            <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">Agent ID</label>
+            <div class="control-group">
+                <div class="field"><input type="text" id="agentIdInput" placeholder="agent_name" value="agent_a"></div>
+                <div class="field"><input type="text" id="agentNameInput" placeholder="Display Name" value="Agent A"></div>
+            </div>
+        </div>
+        <div style="margin-bottom:12px">
+            <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">Input JSON (optional)</label>
+            <textarea id="inputJsonInput" rows="2" placeholder='{"prompt": "hello"}'></textarea>
+        </div>
+        <div class="control-group">
+            <button id="btnRun" class="danger">Run Session</button>
+            <button id="btnRegister" class="secondary">Register Agent</button>
+            <button id="btnList" class="secondary">List Agents</button>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2>Registered Agents <span class="count" id="agentCount">0</span></h2>
+        <table>
+            <thead><tr><th>ID</th><th>Name</th></tr></thead>
+            <tbody id="agentTableBody">
+                <tr><td colspan="2" style="text-align:center;color:var(--text-secondary);font-family:inherit">No agents registered</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="panel full">
+        <h2>Console <span class="count" id="logCount">0</span></h2>
+        <div class="console" id="console"></div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const API_BASE = '';
+    const WS_URL = 'ws://127.0.0.1:8080/ws/telemetry';
+
+    const $ = id => document.getElementById(id);
+
+    let totalTokens = 0;
+    let logCount = 0;
+    let ws = null;
+    let reconnectAttempt = 0;
+    let maxReconnectDelay = 30000;
+    let reconnectTimer = null;
+    let uptimeSeconds = 0;
+    let uptimeInterval = null;
+    let ramTotal = 16;
+
+    const els = {
+        statusBadge: $('statusBadge'),
+        wsIndicator: $('wsIndicator'),
+        uptimeDisplay: $('uptimeDisplay'),
+        ramValue: $('ramValue'),
+        ramDetail: $('ramDetail'),
+        ramBar: $('ramBar'),
+        kvValue: $('kvValue'),
+        kvBar: $('kvBar'),
+        tokensValue: $('tokensValue'),
+        tpsValue: $('tpsValue'),
+        activeAgentValue: $('activeAgentValue'),
+        queueContainer: $('queueContainer'),
+        agentTableBody: $('agentTableBody'),
+        agentCount: $('agentCount'),
+        console: $('console'),
+        logCount: $('logCount'),
+        agentIdInput: $('agentIdInput'),
+        agentNameInput: $('agentNameInput'),
+        inputJsonInput: $('inputJsonInput'),
+        btnRun: $('btnRun'),
+        btnRegister: $('btnRegister'),
+        btnList: $('btnList'),
+    };
+
+    function log(message, level = 'info') {
+        const line = document.createElement('div');
+        line.className = 'line ' + level;
+        const ts = new Date().toLocaleTimeString();
+        line.textContent = '[' + ts + '] ' + message;
+        els.console.appendChild(line);
+        els.console.scrollTop = els.console.scrollHeight;
+        logCount++;
+        els.logCount.textContent = logCount;
+    }
+
+    function setStatus(status) {
+        const s = (status || 'idle').toLowerCase();
+        els.statusBadge.textContent = s;
+        els.statusBadge.className = 'status-badge ' + s;
+    }
+
+    function setWsState(state) {
+        els.wsIndicator.className = 'ws-indicator ' + state;
+    }
+
+    function formatBytes(gb) {
+        if (gb < 1) return (gb * 1024).toFixed(1) + ' MB';
+        return gb.toFixed(1) + ' GB';
+    }
+
+    function updateMetrics(data) {
+        const ramGB = data.ram_used_gb || 0;
+        const ramPct = Math.min((ramGB / ramTotal) * 100, 100);
+        els.ramValue.textContent = ramGB.toFixed(1);
+        els.ramDetail.textContent = ramGB.toFixed(1) + ' GB / ' + ramTotal.toFixed(0) + ' GB';
+        els.ramBar.style.width = ramPct + '%';
+
+        const kvMB = data.kv_cache_mb || 0;
+        els.kvValue.textContent = kvMB.toFixed(1);
+        const kvPct = Math.min((kvMB / 1024) * 100, 100);
+        els.kvBar.style.width = kvPct + '%';
+
+        totalTokens = data.tokens_generated !== undefined ? data.tokens_generated : totalTokens;
+        els.tokensValue.textContent = totalTokens.toLocaleString();
+        els.tokensValue.className = 'value count-anim';
+        setTimeout(() => els.tokensValue.className = 'value', 200);
+
+        const tps = data.tokens_per_second || 0;
+        els.tpsValue.textContent = tps.toFixed(2);
+
+        const activeAgent = data.active_agent || '—';
+        els.activeAgentValue.textContent = activeAgent;
+
+        setStatus(data.status);
+
+        if (data.uptime_s !== undefined) {
+            uptimeSeconds = data.uptime_s;
+            updateUptime();
+        }
+
+        if (data.agent_queue && data.agent_queue.length > 0) {
+            renderQueue(data.agent_queue, activeAgent);
+        } else {
+            els.queueContainer.innerHTML = '<div class="empty-state">No agents in queue</div>';
+        }
+    }
+
+    function updateUptime() {
+        const h = Math.floor(uptimeSeconds / 3600);
+        const m = Math.floor((uptimeSeconds % 3600) / 60);
+        const s = Math.floor(uptimeSeconds % 60);
+        let parts = [];
+        if (h > 0) parts.push(h + 'h');
+        if (m > 0) parts.push(m + 'm');
+        parts.push(s + 's');
+        els.uptimeDisplay.textContent = parts.join(' ');
+    }
+
+    function renderQueue(queue, activeAgent) {
+        let html = '';
+        queue.forEach((agent, i) => {
+            const isActive = agent === activeAgent;
+            html += '<div class="agent-item">' +
+                '<span class="agent-name' + (isActive ? ' active' : '') + '">' + (isActive ? '▶ ' : '') + agent + '</span>' +
+                '<span class="agent-status">' + (isActive ? 'ACTIVE' : 'QUEUED') + '</span>' +
+                '</div>';
+        });
+        els.queueContainer.innerHTML = html;
+    }
+
+    function renderAgents(agents) {
+        if (!agents || agents.length === 0) {
+            els.agentTableBody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:var(--text-secondary);font-family:inherit">No agents registered</td></tr>';
+            els.agentCount.textContent = '0';
+            return;
+        }
+        let html = '';
+        agents.forEach(a => {
+            html += '<tr><td>' + a.agent_id + '</td><td>' + a.name + '</td></tr>';
+        });
+        els.agentTableBody.innerHTML = html;
+        els.agentCount.textContent = agents.length;
+    }
+
+    function connectWs() {
+        if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+        setWsState('connecting');
+        log('Connecting to ' + WS_URL + ' ...', 'info');
+
+        try {
+            ws = new WebSocket(WS_URL);
+        } catch (e) {
+            log('WebSocket creation failed: ' + e.message, 'error');
+            scheduleReconnect();
+            return;
+        }
+
+        ws.onopen = function() {
+            log('WebSocket connected', 'success');
+            setWsState('connected');
+            reconnectAttempt = 0;
+        };
+
+        ws.onmessage = function(event) {
+            try {
+                const data = JSON.parse(event.data);
+                updateMetrics(data);
+            } catch (e) {
+                log('Failed to parse telemetry: ' + e.message, 'error');
+            }
+        };
+
+        ws.onclose = function(event) {
+            setWsState('disconnected');
+            log('WebSocket closed (code=' + event.code + ')', 'warn');
+            ws = null;
+            scheduleReconnect();
+        };
+
+        ws.onerror = function() {
+            log('WebSocket error', 'error');
+        };
+    }
+
+    function scheduleReconnect() {
+        if (reconnectTimer) clearTimeout(reconnectTimer);
+        const delay = Math.min(1000 * Math.pow(2, reconnectAttempt), maxReconnectDelay);
+        reconnectAttempt++;
+        log('Reconnecting in ' + (delay / 1000).toFixed(0) + 's (attempt ' + reconnectAttempt + ')', 'warn');
+        reconnectTimer = setTimeout(connectWs, delay);
+    }
+
+    async function apiFetch(path, options) {
+        const url = API_BASE + path;
+        try {
+            const res = await fetch(url, options);
+            const data = await res.json();
+            if (!res.ok) {
+                log(path + ' → ' + (data.detail || res.statusText), 'error');
+                return null;
+            }
+            return data;
+        } catch (e) {
+            log('Request failed: ' + path + ' (' + e.message + ')', 'error');
+            return null;
+        }
+    }
+
+    async function handleRun() {
+        const agentId = els.agentIdInput.value.trim();
+        if (!agentId) { log('Agent ID is required', 'error'); return; }
+        let input = {};
+        try {
+            const raw = els.inputJsonInput.value.trim();
+            if (raw) input = JSON.parse(raw);
+        } catch (e) {
+            log('Invalid JSON input: ' + e.message, 'error');
+            return;
+        }
+        els.btnRun.disabled = true;
+        els.btnRun.textContent = 'Running...';
+        log('Running session for agent: ' + agentId, 'info');
+        const result = await apiFetch('/session/run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ agent_id: agentId, input: input })
+        });
+        if (result) {
+            log('Session completed: ' + result.session_id + ' (' + result.turns + ' turns)', 'success');
+        }
+        els.btnRun.disabled = false;
+        els.btnRun.textContent = 'Run Session';
+    }
+
+    async function handleRegister() {
+        const agentId = els.agentIdInput.value.trim();
+        const name = els.agentNameInput.value.trim() || agentId;
+        if (!agentId) { log('Agent ID is required', 'error'); return; }
+        els.btnRegister.disabled = true;
+        log('Registering agent: ' + agentId, 'info');
+        const result = await apiFetch('/agents/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ agent_id: agentId, name: name })
+        });
+        if (result) {
+            log('Agent registered: ' + result.agent_id, 'success');
+            handleList();
+        }
+        els.btnRegister.disabled = false;
+    }
+
+    async function handleList() {
+        log('Fetching agent list...', 'info');
+        const result = await apiFetch('/agents');
+        if (result && result.agents) {
+            renderAgents(result.agents);
+            log('Found ' + result.agents.length + ' agents', 'success');
+        }
+    }
+
+    async function fetchSessionStatus() {
+        const result = await apiFetch('/session/status');
+        if (result) {
+            setStatus(result.status);
+            totalTokens = result.tokens_generated || 0;
+            els.tokensValue.textContent = totalTokens.toLocaleString();
+        }
+    }
+
+    function init() {
+        els.btnRun.addEventListener('click', handleRun);
+        els.btnRegister.addEventListener('click', handleRegister);
+        els.btnList.addEventListener('click', handleList);
+
+        fetchSessionStatus();
+        handleList();
+        connectWs();
+
+        uptimeInterval = setInterval(() => {
+            uptimeSeconds++;
+            updateUptime();
+        }, 1000);
+
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) return;
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                connectWs();
+            }
+        });
+
+        log('AnvilAgent UI initialized', 'success');
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
+</body>
+</html>

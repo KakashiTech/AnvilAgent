@@ -1,0 +1,26 @@
+[Unit]
+Description=AnvilAgent Local Inference Daemon (Vulkan)
+After=network.target
+
+[Service]
+Type=simple
+User=tuffhk
+Group=tuffhk
+SupplementaryGroups=render video
+WorkingDirectory=/home/tuffhk/llama.cpp
+ExecStart=/home/tuffhk/llama.cpp/build/bin/llama-server \
+    -m /home/tuffhk/models/Llama-3.2-3B-Instruct-Q4_K_M.gguf \
+    --host 127.0.0.1 \
+    --port 8081 \
+    -c 16384 \
+    -ngl 99 \
+    --flash-attn \
+    --no-mmap
+Restart=always
+RestartSec=3
+Nice=-10
+CPUSchedulingPolicy=rr
+CPUSchedulingPriority=50
+
+[Install]
+WantedBy=multi-user.target

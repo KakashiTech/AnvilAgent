@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=75.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "anvilagent"
+version = "0.1.0"
+description = "Local-first multi-agent orchestrator optimized for AMD APU"
+readme = "README.md"
+license = {text = "Apache-2.0"}
+requires-python = ">=3.12"
+authors = [{name = "AnvilAgent Team"}]
+
+dependencies = [
+    "pydantic>=2.10",
+    "pydantic-settings>=2.7",
+    "anyio>=4.8",
+    "httpx>=0.28",
+    "orjson>=3.10",
+    "psutil>=6.1",
+    "pyyaml>=6.0",
+    "safehttpx>=0.1",
+]
+
+[project.optional-dependencies]
+api = ["fastapi>=0.115", "uvicorn[standard]>=0.34", "websockets>=14"]
+ui = ["jinja2>=3.1"]
+test = ["pytest>=8.3", "pytest-asyncio>=0.25", "pytest-benchmark>=5.1"]
+dev = [
+    "anvilagent[api,ui,test]",
+    "ruff>=0.9",
+    "mypy>=1.14",
+    "pre-commit>=4.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["anvil*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = ["benchmark: mark test as a benchmark"]
