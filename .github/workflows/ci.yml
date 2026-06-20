@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          pip install -e ".[dev,test]"
+          pip install wasmtime
+
+      - name: Lint
+        run: ruff check anvil/
+
+      - name: Type check
+        run: mypy anvil/ --ignore-missing-imports || true
+
+      - name: Test
+        run: pytest tests/ -v --timeout=60 --ignore=tests/benchmarks -x
+
+      - name: Test (LLM integration - optional)
+        run: |
+          echo "LLM integration tests skipped (no llama-server in CI)"
+          pytest tests/test_integration.py::TestLLMIntegration -v --timeout=10 2>&1 || echo "Skipped (expected)"

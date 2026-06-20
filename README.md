@@ -4,6 +4,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.13%2B-blue)](pyproject.toml)
+[![CI](https://github.com/KakashiTech/AnvilAgent/actions/workflows/ci.yml/badge.svg)](https://github.com/KakashiTech/AnvilAgent/actions/workflows/ci.yml)
 [![Tests](https://img.shields.io/badge/Tests-325%20passing-brightgreen)](tests/)
 
 ## What works today (verified on AMD Ryzen 5600G)
@@ -55,7 +56,7 @@ Agents (3 registered + dynamic LLM callbacks):
 | Prompt processing | 89.8 tok/s |
 | Token generation | 18 tok/s |
 | KV compression | 7.27× vs fp16 (q8_0 keys, 3-bit values) |
-| Context switch (target) | ~795 ms vs 74 s cold prefill |
+| Context switch | ~795 ms projected (74 s cold prefill measured) |
 | Model | Llama-3.2-3B-Instruct Q4_K_M (1.9 GB) |
 | GPU | AMD Radeon Graphics (RADV RENOIR), Vulkan 1.4 |
 
