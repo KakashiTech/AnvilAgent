@@ -1,17 +1,15 @@
 from anvil.sandbox.wasm_runner import (
+    ASTRestrictedValidator,
     CodeSandbox,
-    SandboxPolicy,
+    PyToWASMCompiler,
     SandboxResult,
     WasmtimeSandbox,
-    PyToWASMCompiler,
-    ASTRestrictedValidator,
 )
 
 __all__ = [
-    "CodeSandbox",
-    "SandboxResult",
-    "SandboxPolicy",
-    "WasmtimeSandbox",
-    "PyToWASMCompiler",
     "ASTRestrictedValidator",
+    "CodeSandbox",
+    "PyToWASMCompiler",
+    "SandboxResult",
+    "WasmtimeSandbox",
 ]

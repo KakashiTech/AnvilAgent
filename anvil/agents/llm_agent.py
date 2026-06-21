@@ -5,22 +5,9 @@ from uuid import uuid4
 from anvil.core.agent_state import AgentDefinition, AgentOutput, AgentTurn
 from anvil.grammar.schema_compiler import GBNFCompiler
 from anvil.inference.llama_client import LlamaClient
+from anvil.inference.pipeline import build_prompt
 
 logger = logging.getLogger(__name__)
-
-LLAMA32_CHAT_TEMPLATE = (
-    "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n"
-    "{system_prompt}<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n"
-    "{user_input}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"
-)
-
-
-def build_prompt(
-    system_prompt: str,
-    user_input: str,
-    chat_template: str = LLAMA32_CHAT_TEMPLATE,
-) -> str:
-    return chat_template.format(system_prompt=system_prompt, user_input=user_input)
 
 
 def make_llm_callback(

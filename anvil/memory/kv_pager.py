@@ -126,25 +126,25 @@ def _unpack_3bit_vectorized(packed: np.ndarray, shape: tuple) -> np.ndarray:
         indices[i_valid + 6] = (b2 >> 3) & 7
         indices[i_valid + 7] = b2 & 7
 
-        # Handle any remaining groups
-        remaining_start = i_valid[-1] + 8
-        for j in range(remaining_start, n_padded, 8):
-            if j + 7 >= n_padded:
-                break
-            bj = j * 3 // 8
-            if bj + 2 >= n_packed:
-                break
-            b0j = int(packed[bj])
-            b1j = int(packed[bj + 1])
-            b2j = int(packed[bj + 2])
-            indices[j] = (b0j >> 5) & 7
-            indices[j + 1] = (b0j >> 2) & 7
-            indices[j + 2] = ((b0j & 3) << 1) | ((b1j >> 7) & 1)
-            indices[j + 3] = (b1j >> 4) & 7
-            indices[j + 4] = (b1j >> 1) & 7
-            indices[j + 5] = ((b1j & 1) << 2) | ((b2j >> 6) & 3)
-            indices[j + 6] = (b2j >> 3) & 7
-            indices[j + 7] = b2j & 7
+    # Handle remaining groups via scalar fallback
+    scalar_start = i_valid[-1] + 8 if len(i_valid) > 0 else 0
+    for j in range(scalar_start, n_padded, 8):
+        if j + 7 >= n_padded:
+            break
+        bj = j * 3 // 8
+        if bj + 2 >= n_packed:
+            break
+        b0j = int(packed[bj])
+        b1j = int(packed[bj + 1])
+        b2j = int(packed[bj + 2])
+        indices[j] = (b0j >> 5) & 7
+        indices[j + 1] = (b0j >> 2) & 7
+        indices[j + 2] = ((b0j & 3) << 1) | ((b1j >> 7) & 1)
+        indices[j + 3] = (b1j >> 4) & 7
+        indices[j + 4] = (b1j >> 1) & 7
+        indices[j + 5] = ((b1j & 1) << 2) | ((b2j >> 6) & 3)
+        indices[j + 6] = (b2j >> 3) & 7
+        indices[j + 7] = b2j & 7
 
     return indices[:total].reshape(shape)
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import array
 import os
+import re
 import subprocess
 import time
 from dataclasses import dataclass, field
@@ -63,7 +64,7 @@ def bench_gpu_compute() -> float:
     for prog in ["llama-bench", "llama-cli", "main"]:
         raw = _run_subprocess([prog, "--benchmark"], timeout=60)
         if raw:
-            m = __import__("re").search(r"token/s:\s*([\d.]+)", raw)
+            m = re.search(r"token/s:\s*([\d.]+)", raw)
             if m:
                 return float(m.group(1))
     # 2) If llama.cpp is available as a library or elsewhere, try a known path
@@ -74,7 +75,7 @@ def bench_gpu_compute() -> float:
     ]:
         if os.path.isfile(candidate):
             raw = _run_subprocess([candidate, "--benchmark"], timeout=60)
-            m = __import__("re").search(r"token/s:\s*([\d.]+)", raw)
+            m = re.search(r"token/s:\s*([\d.]+)", raw)
             if m:
                 return float(m.group(1))
     # fallback: synthetic Vulkan compute simple bandwidth test
@@ -90,7 +91,7 @@ def bench_cpu_inference() -> float:
     """Measure CPU inference tokens/sec using a tiny synthetic benchmark."""
     raw = _run_subprocess(["llama-bench", "--benchmark", "-m", "none"], timeout=120)
     if raw:
-        m = __import__("re").search(r"avg:\s*([\d.]+)\s*ms", raw)
+        m = re.search(r"avg:\s*([\d.]+)\s*ms", raw)
         if m:
             return round(1000.0 / float(m.group(1)), 2)
     # fallback: naive CPU float throughput
@@ -156,8 +157,8 @@ def _recommend_config(hw: HardwareProfile) -> dict[str, Any]:
     }
 
 
-def profile_system() -> SystemProfile:
-    hw = detect_hardware()
+def profile_system(hw: HardwareProfile | None = None) -> SystemProfile:
+    hw = hw or detect_hardware()
     mb_bw = bench_memory_bandwidth()
     gpu_tokens = bench_gpu_compute()
     cpu_tokens = bench_cpu_inference()

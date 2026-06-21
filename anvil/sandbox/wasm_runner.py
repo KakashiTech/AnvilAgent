@@ -58,7 +58,9 @@ _OPS = {
 class PyToWASMCompiler:
     """Compiles a restricted subset of Python AST to WASM bytecodes."""
 
-    BLOCKED_FUNCS = frozenset({"__import__", "open", "exec", "eval", "compile", "input", "breakpoint"})
+    BLOCKED_FUNCS = frozenset({
+        "__import__", "open", "exec", "eval", "compile", "input", "breakpoint"
+    })
 
     @classmethod
     def compile(cls, code: str) -> bytes:
@@ -102,8 +104,7 @@ class PyToWASMCompiler:
     def _compile_node(cls, node: ast.AST, bc: bytearray):
         if isinstance(node, ast.Expr):
             cls._compile_expr(node.value, bc)
-            if not isinstance(node.value, ast.Call):
-                bc.append(_OPS["RET"])
+            bc.append(_OPS["RET"])
         elif isinstance(node, ast.Assign):
             bc.append(_OPS["PUSH_I32"])
             bc.extend(struct.pack("<i", 0))
@@ -124,7 +125,9 @@ class PyToWASMCompiler:
             elif isinstance(node.value, str):
                 raise SandboxCompileError("String constants not supported in WASM compile")
             else:
-                raise SandboxCompileError(f"Constant type {type(node.value).__name__} not supported")
+                    raise SandboxCompileError(
+                        f"Constant type {type(node.value).__name__} not supported"
+                    )
 
         elif isinstance(node, ast.UnaryOp):
             cls._compile_expr(node.operand, bc)
@@ -140,11 +143,16 @@ class PyToWASMCompiler:
         elif isinstance(node, ast.BinOp):
             cls._compile_expr(node.left, bc)
             cls._compile_expr(node.right, bc)
-            if isinstance(node.op, ast.Add): bc.append(_OPS["ADD"])
-            elif isinstance(node.op, ast.Sub): bc.append(_OPS["SUB"])
-            elif isinstance(node.op, ast.Mult): bc.append(_OPS["MUL"])
-            elif isinstance(node.op, ast.Div): bc.append(_OPS["DIV"])
-            elif isinstance(node.op, ast.Pow): raise SandboxCompileError("Power operator not supported in WASM")
+            if isinstance(node.op, ast.Add):
+                bc.append(_OPS["ADD"])
+            elif isinstance(node.op, ast.Sub):
+                bc.append(_OPS["SUB"])
+            elif isinstance(node.op, ast.Mult):
+                bc.append(_OPS["MUL"])
+            elif isinstance(node.op, ast.Div):
+                bc.append(_OPS["DIV"])
+            elif isinstance(node.op, ast.Pow):
+                raise SandboxCompileError("Power operator not supported in WASM")
             else:
                 raise SandboxCompileError(f"BinOp {type(node.op).__name__} not supported")
 
@@ -220,7 +228,9 @@ class WasmtimeSandbox:
     _lock = threading.Lock()
     _cache: _WasmModuleCache | None = None
 
-    def __init__(self, fuel_limit: int = 500_000, memory_limit_pages: int = 256, timeout_s: int = 30):
+    def __init__(
+        self, fuel_limit: int = 500_000, memory_limit_pages: int = 256, timeout_s: int = 30
+    ):
         if not _HAS_WASMTIME:
             raise ImportError("wasmtime not installed. Run: pip install wasmtime")
         self.fuel_limit = fuel_limit
@@ -478,21 +488,4 @@ class CodeSandbox:
         return ThreadingPythonExecutor.execute(code, inputs, self.max_execution_time_s)
 
 
-# ─── SandboxPolicy ────────────────────────────────────────────────
 
-class SandboxPolicy:
-    ALLOW_NONE = 0
-    ALLOW_READ = 1
-    ALLOW_WRITE = 2
-    ALLOW_ALL = 3
-
-    def __init__(self, filesystem: int = ALLOW_NONE,
-                 network: int = ALLOW_NONE,
-                 process_spawn: bool = False,
-                 memory_limit_mb: int = 256,
-                 time_limit_s: int = 30):
-        self.filesystem = filesystem
-        self.network = network
-        self.process_spawn = process_spawn
-        self.memory_limit_mb = memory_limit_mb
-        self.time_limit_s = time_limit_s

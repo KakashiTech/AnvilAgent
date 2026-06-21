@@ -43,8 +43,12 @@ class SSDPagePool:
 
     def _load_index(self):
         if self._index_path.exists():
-            with open(self._index_path) as f:
-                self._index = json.load(f)
+            try:
+                with open(self._index_path) as f:
+                    self._index = json.load(f)
+            except (json.JSONDecodeError, OSError) as e:
+                logger.warning("Corrupt page index, starting fresh: %s", e)
+                self._index = {}
 
     def _save_index(self):
         with open(self._index_path, 'w') as f:
@@ -111,8 +115,12 @@ class SSDPagePool:
             return None
 
         # Load metadata
-        with open(meta_path) as f:
-            meta = json.load(f)
+        try:
+            with open(meta_path) as f:
+                meta = json.load(f)
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning("Corrupt block metadata for %s: %s", block_id, e)
+            return None
 
         # Load tensors
         if HAS_SAFETENSORS and page_path.exists():
@@ -177,7 +185,15 @@ class SSDPagePool:
 
     def clear(self):
         """Clear all cached blocks."""
-        shutil.rmtree(self.cache_dir)
+        resolved = self.cache_dir.resolve()
+        parent = resolved.parent
+        if str(resolved) in ("/", str(Path.home()), str(Path.home().resolve())):
+            raise PermissionError(
+                f"Refusing to clear {resolved}: refusing to wipe system directory"
+            )
+        if parent == resolved:
+            raise PermissionError(f"Refusing to clear {resolved}: no parent directory")
+        shutil.rmtree(resolved)
         self.cache_dir.mkdir(parents=True)
         self._index = {}
         self._save_index()

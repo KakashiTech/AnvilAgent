@@ -37,7 +37,7 @@ class ContextRestorer:
         self._active_context: PagedKVBlock | None = None
         self._slot_id: int = 0
 
-    async def inject_context(self, block: PagedKVBlock, slot_id: int = 0) -> bool:
+    def inject_context(self, block: PagedKVBlock, slot_id: int = 0) -> bool:
         """
         Inject compressed KV cache into llama.cpp context slot.
 
@@ -153,7 +153,7 @@ class ContextScheduler:
             logger.info(f"No cached KV for agent {agent_id}, will do cold prefill")
             return False
 
-        return await self.restorer.inject_context(block, slot)
+        return self.restorer.inject_context(block, slot)
 
     def get_slot_for(self, agent_id: str) -> int | None:
         return self._slot_map.get(agent_id)

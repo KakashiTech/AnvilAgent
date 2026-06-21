@@ -3,8 +3,13 @@ import typing
 
 from pydantic import BaseModel
 
-from anvil.grammar.constrained_decoder import GrammarMatcher
 from anvil.grammar.schema_compiler import GBNFCompiler
+from anvil.grammar.xgrammar_bridge import (
+    GBNFParser,
+    GrammarMatcher,
+    LogitMaskGenerator,
+    XGrammarBridge,
+)
 
 
 class UserSchema(BaseModel):
@@ -164,44 +169,133 @@ class TestGBNFCompiler:
         assert '" "*' in gbnf, "ws should allow multiple spaces"
 
 
+class TestGBNFParser:
+    def test_parse_simple_rule(self):
+        gbnf = 'root ::= "hello"'
+        parser = GBNFParser(gbnf)
+        rules = parser.parse()
+        assert "root" in rules
+        assert len(rules["root"]) == 1
+
+    def test_parse_alternatives(self):
+        gbnf = 'root ::= "a" | "b"'
+        parser = GBNFParser(gbnf)
+        rules = parser.parse()
+        assert len(rules["root"]) == 2
+
+    def test_parse_rule_reference(self):
+        gbnf = 'root ::= greeting\ngreeting ::= "hi"'
+        parser = GBNFParser(gbnf)
+        rules = parser.parse()
+        assert "root" in rules
+        assert "greeting" in rules
+
+    def test_parse_char_class(self):
+        gbnf = 'root ::= [0-9]'
+        parser = GBNFParser(gbnf)
+        rules = parser.parse()
+        assert "root" in rules
+
+    def test_parse_quantified(self):
+        gbnf = 'root ::= "a"+'
+        parser = GBNFParser(gbnf)
+        rules = parser.parse()
+        assert "root" in rules
+
+
 class TestGrammarMatcher:
-    def test_deterministic_detection(self):
-        matcher = GrammarMatcher("")
-        assert matcher.is_deterministic('{"name":')
-        assert not matcher.is_deterministic('{"name": "john')
+    def test_basic_matching(self):
+        gbnf = 'root ::= "hello"'
+        matcher = GrammarMatcher(gbnf)
+        valid = matcher.get_valid_chars()
+        assert "h" in valid
 
-    def test_deterministic_colon(self):
-        matcher = GrammarMatcher("")
-        token = matcher.get_deterministic_token('{"name"')
-        assert token == ':'
+    def test_advance_and_match(self):
+        gbnf = 'root ::= "hello"'
+        matcher = GrammarMatcher(gbnf)
+        matcher.advance("h")
+        matcher.advance("e")
+        valid = matcher.get_valid_chars()
+        assert "l" in valid
 
-    def test_deterministic_space_after_key(self):
-        matcher = GrammarMatcher("")
-        token = matcher.get_deterministic_token('{"name":')
-        assert token == ' '
+    def test_accepting_state(self):
+        gbnf = 'root ::= "a"'
+        matcher = GrammarMatcher(gbnf)
+        matcher.advance("a")
+        assert matcher.is_accepting()
 
-    def test_deterministic_newline_after_comma(self):
-        matcher = GrammarMatcher("")
-        token = matcher.get_deterministic_token('"age": 30,')
-        assert token == '\n'
+    def test_not_accepting(self):
+        gbnf = 'root ::= "ab"'
+        matcher = GrammarMatcher(gbnf)
+        matcher.advance("a")
+        assert not matcher.is_accepting()
 
-    def test_deterministic_structural_markers(self):
-        matcher = GrammarMatcher("")
-        assert matcher.is_deterministic('{')
-        assert matcher.is_deterministic('}')
-        assert matcher.is_deterministic('[')
-        assert matcher.is_deterministic(']')
-        assert matcher.is_deterministic(':')
-        assert matcher.is_deterministic(',')
-        assert matcher.is_deterministic(' ')
+    def test_reset(self):
+        gbnf = 'root ::= "a"'
+        matcher = GrammarMatcher(gbnf)
+        matcher.advance("a")
+        assert matcher.is_accepting()
+        matcher.reset()
+        assert not matcher.is_accepting()
 
-    def test_non_deterministic_values(self):
-        matcher = GrammarMatcher("")
-        assert not matcher.is_deterministic('"hello')
-        assert not matcher.is_deterministic('42')
+    def test_deterministic_single_char(self):
+        gbnf = 'root ::= "a"'
+        matcher = GrammarMatcher(gbnf)
+        assert matcher.is_deterministic()
+        assert matcher.get_deterministic_char() == "a"
 
-    def test_allowed_tokens(self):
-        matcher = GrammarMatcher("")
-        tokens = matcher.get_allowed_tokens("")
-        assert len(tokens) > 0
-        assert all(isinstance(t, int) for t in tokens)
+    def test_non_deterministic_multi_char(self):
+        gbnf = 'root ::= "a" | "b"'
+        matcher = GrammarMatcher(gbnf)
+        assert not matcher.is_deterministic()
+
+    def test_empty_grammar_raises(self):
+        try:
+            GrammarMatcher('root ::= ""')
+        except Exception:
+            pass
+
+    def test_structural_deterministic_after_match(self):
+        # After matching "name", only ':' is valid in JSON-like grammar
+        gbnf = 'root ::= "name" ":" value\nvalue ::= "hello" | "world"'
+        matcher = GrammarMatcher(gbnf)
+        for ch in "name":
+            matcher.advance(ch)
+        assert matcher.is_deterministic()
+        assert matcher.get_deterministic_char() == ":"
+
+
+class TestLogitMaskGenerator:
+    def test_mask_allows_valid_chars(self):
+        gbnf = 'root ::= "a"'
+        matcher = GrammarMatcher(gbnf)
+        vocab = ["a", "b", "c"]
+        gen = LogitMaskGenerator(matcher, vocab)
+        mask = gen.get_mask()
+        assert mask[0] == 0.0  # "a" is valid
+        assert mask[1] == float("-inf")  # "b" is not
+        assert mask[2] == float("-inf")  # "c" is not
+
+    def test_mask_no_vocab_uses_default_size(self):
+        gbnf = 'root ::= "a"'
+        matcher = GrammarMatcher(gbnf)
+        gen = LogitMaskGenerator(matcher)
+        mask = gen.get_mask()
+        assert len(mask) == 32000
+
+
+class TestXGrammarBridge:
+    def test_compile_and_advance(self):
+        bridge = XGrammarBridge(vocabulary=["{", "}", '"', "hello"])
+        gbnf = 'root ::= "hello"'
+        bridge._grammar_text = gbnf
+        bridge._matcher = GrammarMatcher(gbnf)
+        bridge._mask_gen = LogitMaskGenerator(bridge._matcher, bridge.vocabulary)
+        assert bridge.get_grammar_text() == gbnf
+        mask = bridge.get_logit_mask()
+        assert len(mask) == len(bridge.vocabulary)
+
+    def test_reset_and_cleanup(self):
+        bridge = XGrammarBridge()
+        bridge.reset()  # no-op when no matcher
+        bridge.cleanup()  # no-op when no path

@@ -4,7 +4,7 @@ import struct
 import time
 
 import pytest
-from anvil.sandbox.wasm_runner import CodeSandbox, SandboxPolicy
+from anvil.sandbox.wasm_runner import CodeSandbox
 
 
 class TestCodeSandbox:
@@ -211,32 +211,6 @@ class TestCodeSandbox:
         assert len(lines) == 3
         assert lines[0] == "line 0"
         assert lines[2] == "line 2"
-
-
-class TestSandboxPolicy:
-    def test_default_policy_is_restrictive(self):
-        policy = SandboxPolicy()
-        assert policy.filesystem == SandboxPolicy.ALLOW_NONE
-        assert policy.network == SandboxPolicy.ALLOW_NONE
-        assert policy.process_spawn is False
-        assert policy.memory_limit_mb == 256
-        assert policy.time_limit_s == 30
-
-    def test_policy_allows_read_filesystem(self):
-        policy = SandboxPolicy(filesystem=SandboxPolicy.ALLOW_READ)
-        assert policy.filesystem == SandboxPolicy.ALLOW_READ
-
-    def test_policy_allows_network(self):
-        policy = SandboxPolicy(network=SandboxPolicy.ALLOW_ALL)
-        assert policy.network == SandboxPolicy.ALLOW_ALL
-
-    def test_custom_memory_limit(self):
-        policy = SandboxPolicy(memory_limit_mb=512)
-        assert policy.memory_limit_mb == 512
-
-    def test_custom_time_limit(self):
-        policy = SandboxPolicy(time_limit_s=60)
-        assert policy.time_limit_s == 60
 
 
 # ─── Wasmtime Sandbox Tests ──────────────────────────────────────

@@ -1,4 +1,5 @@
 import asyncio
+import ipaddress
 import logging
 import time
 from dataclasses import dataclass
@@ -33,7 +34,16 @@ class LlamaClientConfig:
 class LlamaClient:
     def __init__(self, config: LlamaClientConfig | None = None):
         self.config = config or LlamaClientConfig()
-        self._base_url = f"http://{self.config.host}:{self.config.port}"
+        host = self.config.host
+        # Validate host is a loopback address or localhost
+        try:
+            addr = ipaddress.ip_address(host)
+            if not addr.is_loopback:
+                logger.warning("LlamaClient host %s is not loopback; SSRF risk", host)
+        except ValueError:
+            if host not in ("localhost",):
+                logger.warning("LlamaClient host %s is not localhost; SSRF risk", host)
+        self._base_url = f"http://{host}:{self.config.port}"
         self._client: httpx.AsyncClient | None = None
 
     async def _ensure_client(self):

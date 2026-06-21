@@ -4,7 +4,7 @@ from uuid import uuid4
 from anvil.core.agent_state import AgentDefinition, AgentOutput, AgentTurn
 from anvil.grammar.schema_compiler import GBNFCompiler
 from anvil.inference.llama_client import LlamaClient, LlamaClientConfig
-from anvil.memory.context_restorer import ContextScheduler
+from anvil.memory.context_restorer import ContextRestorer, ContextScheduler
 from anvil.memory.safetensors_store import SSDPagePool
 
 logger = logging.getLogger(__name__)
@@ -47,7 +47,7 @@ class InferencePipeline:
         self.llama_client = LlamaClient(llama_config)
         self.ssd_pool = ssd_pool or SSDPagePool()
         self.context_scheduler = context_scheduler or ContextScheduler(
-            None, self.ssd_pool
+            ContextRestorer(), self.ssd_pool
         )
         self.gbnf_compiler = gbnf_compiler or GBNFCompiler()
 
@@ -65,7 +65,7 @@ class InferencePipeline:
             agent_list = ", ".join(
                 a for a in available_agents if a != agent_id
             )
-            system_prompt = system_prompt + CHAIN_SUFFIX.format(
+            system_prompt = system_prompt + CHAIN_SYSTEM_PROMPT_SUFFIX.format(
                 agent_list=agent_list
             )
 
@@ -181,4 +181,4 @@ class InferencePipeline:
         }
 
 
-CHAIN_SUFFIX = CHAIN_SYSTEM_PROMPT_SUFFIX
+

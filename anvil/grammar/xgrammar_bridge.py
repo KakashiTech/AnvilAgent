@@ -195,7 +195,7 @@ class GrammarState:
 
     def __init__(self, uid: int):
         self.uid = uid
-        self.transitions: list[tuple[str | None, "GrammarState"]] = []  # (label, target)
+        self.transitions: list[tuple[str | None, GrammarState]] = []  # (label, target)
         self.is_accept = False
 
     def add_transition(self, label: str | None, target: "GrammarState"):
@@ -230,8 +230,13 @@ class GrammarNFA:
         self._compile_alternatives(self.rules[self.start_rule], start, accept)
         return start
 
-    def _compile_alternatives(self, alts: list[list[Any]], start: GrammarState, accept: GrammarState):
+    def _compile_alternatives(
+        self, alts: list[list[Any]], start: GrammarState, accept: GrammarState
+    ):
         for alt in alts:
+            if not alt:
+                start.add_transition(None, accept)
+                continue
             current = start
             for i, elem in enumerate(alt):
                 if i < len(alt) - 1:
@@ -240,9 +245,10 @@ class GrammarNFA:
                     current = mid
                 else:
                     self._compile_element(elem, current, accept)
-            current.add_transition(None, accept)
 
-    def _compile_element(self, elem: Any, start: GrammarState, accept: GrammarState) -> GrammarState | None:
+    def _compile_element(
+        self, elem: Any, start: GrammarState, accept: GrammarState
+    ) -> GrammarState | None:
         if isinstance(elem, Lit):
             for i, ch in enumerate(elem):
                 mid = self._new_state() if i < len(elem) - 1 else accept

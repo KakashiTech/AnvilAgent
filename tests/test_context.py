@@ -63,12 +63,12 @@ class TestKVFormatValidation:
 class TestContextInjection:
     @pytest.mark.asyncio
     async def test_inject_valid_block_returns_true(self, restorer, sample_block):
-        result = await restorer.inject_context(sample_block, slot_id=0)
+        result = restorer.inject_context(sample_block, slot_id=0)
         assert result is True
 
     @pytest.mark.asyncio
     async def test_inject_sets_active_context(self, restorer, sample_block):
-        await restorer.inject_context(sample_block, slot_id=1)
+        restorer.inject_context(sample_block, slot_id=1)
         info = restorer.get_active_context_info()
         assert info is not None
         assert info["agent_id"] == "test_agent"
@@ -80,7 +80,7 @@ class TestContextInjection:
         keys = np.zeros((4, 64, 128), dtype=np.float32)
         values = np.zeros((8, 64, 128), dtype=np.float32)
         bad_block = quantizer.compress_block(keys, values)
-        result = await restorer.inject_context(bad_block)
+        result = restorer.inject_context(bad_block)
         assert result is False
 
     @pytest.mark.asyncio
@@ -88,12 +88,12 @@ class TestContextInjection:
         keys = np.zeros((4, 64, 128), dtype=np.float32)
         values = np.zeros((8, 64, 128), dtype=np.float32)
         bad_block = quantizer.compress_block(keys, values)
-        await restorer.inject_context(bad_block)
+        restorer.inject_context(bad_block)
         assert restorer.get_active_context_info() is None
 
     @pytest.mark.asyncio
     async def test_inject_updates_slot_id(self, restorer, sample_block):
-        await restorer.inject_context(sample_block, slot_id=2)
+        restorer.inject_context(sample_block, slot_id=2)
         info = restorer.get_active_context_info()
         assert info["slot_id"] == 2
 
@@ -183,14 +183,14 @@ class TestActiveContextTracking:
 
     @pytest.mark.asyncio
     async def test_clear_context_clears_active(self, restorer, sample_block):
-        await restorer.inject_context(sample_block, slot_id=0)
+        restorer.inject_context(sample_block, slot_id=0)
         assert restorer.get_active_context_info() is not None
         restorer.clear_context(slot_id=0)
         assert restorer.get_active_context_info() is None
 
     @pytest.mark.asyncio
     async def test_clear_context_different_slot_does_not_clear(self, restorer, sample_block):
-        await restorer.inject_context(sample_block, slot_id=1)
+        restorer.inject_context(sample_block, slot_id=1)
         restorer.clear_context(slot_id=2)
         assert restorer.get_active_context_info() is not None
 
@@ -202,9 +202,9 @@ class TestActiveContextTracking:
         keys_b = np.ones((4, 32, 64), dtype=np.float32)
         vals_b = np.ones((4, 32, 64), dtype=np.float32)
         block_b = quantizer.compress_block(keys_b, vals_b, agent_id="agent_b")
-        await restorer.inject_context(block_a)
+        restorer.inject_context(block_a)
         assert restorer.get_active_context_info()["agent_id"] == "agent_a"
-        await restorer.inject_context(block_b)
+        restorer.inject_context(block_b)
         assert restorer.get_active_context_info()["agent_id"] == "agent_b"
 
     def test_format_for_llamacpp(self, restorer, sample_block, quantizer):

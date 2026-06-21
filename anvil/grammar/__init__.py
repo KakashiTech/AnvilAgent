@@ -1,5 +1,5 @@
 from anvil.grammar.schema_compiler import GBNFCompiler
-from anvil.grammar.xgrammar_bridge import (  # noqa: E501
+from anvil.grammar.xgrammar_bridge import (
     GBNFParser,
     GrammarMatcher,
     LogitMaskGenerator,
@@ -7,9 +7,9 @@ from anvil.grammar.xgrammar_bridge import (  # noqa: E501
 )
 
 __all__ = [
-    "XGrammarBridge",
-    "GrammarMatcher",
     "GBNFParser",
-    "LogitMaskGenerator",
+    "GrammarMatcher",
     "GBNFCompiler",
+    "LogitMaskGenerator",
+    "XGrammarBridge",
 ]

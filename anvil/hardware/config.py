@@ -111,7 +111,7 @@ def generate_config(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     with open(output_path, "w") as f:
-        yaml.dump(profiles_data, f, default_flow_style=False, sort_keys=False)
+        yaml.dump(merged, f, default_flow_style=False, sort_keys=False)
 
     return merged
 
@@ -120,14 +120,9 @@ def generate_anvil_config(
     hw: HardwareProfile | None = None,
     output_path: Path | None = None,
 ) -> dict[str, Any]:
-    if hw is not None:
-        sp = __import__("anvil.hardware.profiler", fromlist=["SystemProfile"]).SystemProfile(
-            hardware=hw
-        )
-    else:
-        from .profiler import profile_system
+    from .profiler import profile_system
 
-        sp = profile_system()
+    sp = profile_system() if hw is None else profile_system(hw)
 
     hw_ = sp.hardware
     ram_gb = round(hw_.ram_total_bytes / (1024**3), 1)
